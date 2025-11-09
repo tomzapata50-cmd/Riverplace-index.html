@@ -178,25 +178,32 @@
     ];
 
     // Map setup
-    const map = L.map('map').setView([43.3321, -83.7373], 16);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap'
-    }).addTo(map);
-
-    // Add markers and keep reference for interaction
+    let map = null;
     const markerGroup = [];
-    businesses.forEach((biz, idx) => {
-      const popupContent = `
-        <b>${biz.name}</b><br>
-        ${biz.desc}<br>
-        <span style="color:#32806e">${biz.hours}</span><br>
-        <a href="https://www.google.com/maps/dir/?api=1&destination=${biz.coords[0]},${biz.coords[1]}" target="_blank">Get Directions</a>
-      `;
-      const marker = L.marker(biz.coords).addTo(map)
-        .bindPopup(popupContent);
-      markerGroup.push(marker);
-    });
+    
+    if (typeof L !== 'undefined') {
+      map = L.map('map').setView([43.3321, -83.7373], 16);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(map);
+
+      // Add markers and keep reference for interaction
+      businesses.forEach((biz, idx) => {
+        const popupContent = `
+          <b>${biz.name}</b><br>
+          ${biz.desc}<br>
+          <span style="color:#32806e">${biz.hours}</span><br>
+          <a href="https://www.google.com/maps/dir/?api=1&destination=${biz.coords[0]},${biz.coords[1]}" target="_blank">Get Directions</a>
+        `;
+        const marker = L.marker(biz.coords).addTo(map)
+          .bindPopup(popupContent);
+        markerGroup.push(marker);
+      });
+    } else {
+      // If Leaflet is not available, show error message in map area
+      document.getElementById('map').innerHTML = '<div style="display:flex; align-items:center; justify-content:center; height:100%; background:#f5f5f5; color:#666; font-size:18px; padding:20px; text-align:center;">Map could not be loaded. Please check your internet connection and refresh the page.</div>';
+    }
 
     // Sidebar List Rendering
     function renderList(filterText = "", category = "") {
@@ -207,10 +214,10 @@
         if (filterText && !biz.name.toLowerCase().includes(filterText.toLowerCase())) match = false;
         if (category && biz.type !== category) match = false;
         if (!match) {
-          markerGroup[idx].setOpacity(0.2);
+          if (markerGroup[idx]) markerGroup[idx].setOpacity(0.2);
           return;
         }
-        markerGroup[idx].setOpacity(1);
+        if (markerGroup[idx]) markerGroup[idx].setOpacity(1);
         const li = document.createElement('li');
         li.className = "business-item";
         li.innerHTML = `
@@ -224,8 +231,10 @@
           <div><a href="https://www.google.com/maps/dir/?api=1&destination=${biz.coords[0]},${biz.coords[1]}" target="_blank">Get Directions</a></div>
         `;
         li.onclick = () => {
-          map.setView(biz.coords, 18);
-          markerGroup[idx].openPopup();
+          if (map && markerGroup[idx]) {
+            map.setView(biz.coords, 18);
+            markerGroup[idx].openPopup();
+          }
         };
         listEl.appendChild(li);
       });
