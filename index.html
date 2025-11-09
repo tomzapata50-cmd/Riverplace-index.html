@@ -237,3 +237,249 @@
   </script>
 </body>
 </html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Frankenmuth River Place Business Directory</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+    }
+    .header {
+      background: #21514b;
+      color: #fff;
+      padding: 30px 20px 10px 20px;
+      text-align: center;
+    }
+    .subtitle {
+      font-size: 1.2em;
+      margin-bottom: 10px;
+    }
+    .desc-line {
+      background: #32806e;
+      color: #fff;
+      padding: 5px 10px;
+      text-align: center;
+      font-size: 1em;
+    }
+    .container {
+      display: flex;
+      height: calc(100vh - 110px);
+    }
+    .sidebar {
+      width: 340px;
+      background: #fff;
+      padding: 0;
+      box-shadow: 1px 0 10px rgba(0,0,0,0.1);
+      overflow-y: auto;
+      border-right: 1px solid #bacec4;
+    }
+    .sidebar input, .sidebar select {
+      width: 92%;
+      margin: 15px 4% 0 4%;
+      padding: 8px;
+      border: 1px solid #aaccc1;
+      border-radius: 5px;
+    }
+    .business-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .business-item {
+      border-bottom: 1px solid #eeeeee;
+      padding: 16px 18px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .business-item:hover {
+      background: #e6f2ee;
+    }
+    .business-title {
+      margin: 0;
+      font-size: 1.1em;
+      font-weight: bold;
+    }
+    .business-cats {
+      display: flex;
+      gap: 7px;
+      margin-top: 6px;
+    }
+    .badge {
+      background: gold;
+      color: #444;
+      padding: 2px 7px;
+      font-size: .80em;
+      border-radius: 11px;
+    }
+    .badge.featured { background: #e74c3c; color: #fff; }
+    .badge.premium { background: #ffd600; color: #333; }
+    .business-type {
+      font-size: 0.97em;
+      color: #666;
+      margin: 2px 0 4px 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .business-hours {
+      font-size: .93em;
+      color: #21514b;
+      margin-top: 2px;
+    }
+    #map {
+      flex: 1;
+      height: 100%;
+      min-width: 0;
+    }
+    @media (max-width: 900px) {
+      .container { flex-direction: column; }
+      .sidebar { width: 100%; max-height: 260px; border-right: none; }
+      #map { min-height: 340px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Frankenmuth River Place Business Directory</h1>
+    <div class="subtitle">Find Your Favorite Shops, Restaurants & Attractions</div>
+  </div>
+  <div class="desc-line">
+    5 Local Businesses • Interactive Map & Directions • Mobile Friendly • Real-time Updates
+  </div>
+  <div class="container">
+    <div class="sidebar">
+      <input type="text" id="search" placeholder="Search businesses...">
+      <select id="categoryFilter">
+        <option value="">All Categories</option>
+        <option value="Restaurant">Restaurant</option>
+        <option value="Specialty Food">Specialty Food</option>
+        <option value="Shop">Shop</option>
+      </select>
+      <ul class="business-list" id="list"></ul>
+    </div>
+    <div id="map"></div>
+  </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    // Example data - you can edit these items to showcase your work or businesses!
+    const businesses = [
+      {
+        name: "Bavarian Inn Restaurant",
+        type: "Restaurant",
+        featured: true,
+        premium: true,
+        desc: "Restaurant",
+        hours: "Daily: 11am-9pm",
+        coords: [43.3319, -83.7382]
+      },
+      {
+        name: "Frankenmuth Cheese Haus",
+        type: "Specialty Food",
+        featured: false,
+        premium: true,
+        desc: "Specialty Food",
+        hours: "Mon-Sat: 9am-8pm, Sun: 11am-6pm",
+        coords: [43.3325, -83.7387]
+      },
+      {
+        name: "Memory Makers",
+        type: "Shop",
+        featured: false,
+        premium: true,
+        desc: "Shop",
+        hours: "Daily: 10am-7pm",
+        coords: [43.3332, -83.7371]
+      },
+      {
+        name: "River Place Shops",
+        type: "Shop",
+        featured: true,
+        premium: false,
+        desc: "Shop",
+        hours: "Mon-Sat: 10am-9pm, Sun: 11am-6pm",
+        coords: [43.3321, -83.7366]
+      },
+      {
+        name: "Frankenmuth Fudge Kitchen",
+        type: "Specialty Food",
+        featured: false,
+        premium: true,
+        desc: "Specialty Food",
+        hours: "Daily: 9am-9pm",
+        coords: [43.3327, -83.7368]
+      }
+    ];
+
+    // Map setup
+    const map = L.map('map').setView([43.3321, -83.7373], 16);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    // Add markers and keep reference for interaction
+    const markerGroup = [];
+    businesses.forEach((biz, idx) => {
+      const popupContent = `
+        <b>${biz.name}</b><br>
+        ${biz.desc}<br>
+        <span style="color:#32806e">${biz.hours}</span><br>
+        <a href="https://www.google.com/maps/dir/?api=1&destination=${biz.coords[0]},${biz.coords[1]}" target="_blank">Get Directions</a>
+      `;
+      const marker = L.marker(biz.coords).addTo(map)
+        .bindPopup(popupContent);
+      markerGroup.push(marker);
+    });
+
+    // Sidebar List Rendering
+    function renderList(filterText = "", category = "") {
+      const listEl = document.getElementById('list');
+      listEl.innerHTML = "";
+      businesses.forEach((biz, idx) => {
+        let match = true;
+        if (filterText && !biz.name.toLowerCase().includes(filterText.toLowerCase())) match = false;
+        if (category && biz.type !== category) match = false;
+        if (!match) {
+          markerGroup[idx].setOpacity(0.2);
+          return;
+        }
+        markerGroup[idx].setOpacity(1);
+        const li = document.createElement('li');
+        li.className = "business-item";
+        li.innerHTML = `
+          <span class="business-title">${biz.name}</span>
+          <div class="business-cats">
+            ${biz.featured ? '<span class="badge featured">FEATURED</span>' : ''}
+            ${biz.premium ? '<span class="badge premium">PREMIUM</span>' : ''}
+          </div>
+          <div class="business-type">${biz.desc}</div>
+          <div class="business-hours">${biz.hours}</div>
+          <div><a href="https://www.google.com/maps/dir/?api=1&destination=${biz.coords[0]},${biz.coords[1]}" target="_blank">Get Directions</a></div>
+        `;
+        li.onclick = () => {
+          map.setView(biz.coords, 18);
+          markerGroup[idx].openPopup();
+        };
+        listEl.appendChild(li);
+      });
+    }
+
+    // Search and category filter events
+    document.getElementById('search').addEventListener('input', e => {
+      renderList(e.target.value, document.getElementById('categoryFilter').value);
+    });
+    document.getElementById('categoryFilter').addEventListener('change', e => {
+      renderList(document.getElementById('search').value, e.target.value);
+    });
+
+    // Initial render
+    renderList();
+  </script>
+</body>
+</html>
